@@ -1,0 +1,2205 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Syndicate Grid | شبكة الاحتكار</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Arabic & Mono Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Tactical Dark Financial Theme */
+        :root {
+            --bg-deep: #060a12;
+            --panel-bg: rgba(12, 19, 34, 0.90);
+            --panel-border: rgba(56, 189, 248, 0.22);
+            --accent-cyan: #22d3ee;
+            --accent-emerald: #10b981;
+            --accent-rose: #f43f5e;
+            --accent-amber: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: var(--bg-deep);
+            color: #e2e8f0;
+            font-family: 'Cairo', sans-serif;
+            touch-action: none;
+        }
+
+        .font-mono-num {
+            font-family: 'JetBrains Mono', monospace;
+            direction: ltr;
+            display: inline-block;
+        }
+
+        canvas#gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            cursor: grab;
+        }
+
+        canvas#gameCanvas:active {
+            cursor: grabbing;
+        }
+
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+
+        /* Custom slim scrollbars */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.4);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(56, 189, 248, 0.35);
+            border-radius: 99px;
+        }
+
+        .btn-tactical {
+            transition: all 0.16s ease;
+        }
+        .btn-tactical:active {
+            transform: scale(0.96);
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.45); }
+            50% { box-shadow: 0 0 16px 3px rgba(34, 211, 238, 0.25); }
+        }
+        .route-selecting-banner {
+            animation: pulseGlow 1.8s infinite;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .toast-anim {
+            animation: slideIn 0.25s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="relative w-screen h-screen overflow-hidden select-none">
+
+    <!-- Main Interactive World Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- ==================== TOP HUD BAR ==================== -->
+    <header class="fixed top-2 left-2 right-2 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+        <!-- Brand & Financial Stats -->
+        <div class="glass-panel rounded-xl px-3 py-2 flex items-center gap-3 md:gap-5 pointer-events-auto max-w-full overflow-x-auto">
+            <div class="flex items-center gap-2 shrink-0">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-700 flex items-center justify-center shadow-lg shadow-cyan-500/20 border border-cyan-300/30">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                    </svg>
+                </div>
+                <div class="hidden sm:block leading-tight">
+                    <div class="font-extrabold text-sm tracking-wide text-cyan-300">SYNDICATE GRID</div>
+                    <div class="text-[10px] text-slate-400">شبكة الاحتكار • محاكاة تجارية</div>
+                </div>
+            </div>
+
+            <div class="h-7 w-px bg-slate-700/70 shrink-0"></div>
+
+            <!-- Cash -->
+            <div class="shrink-0">
+                <div class="text-[10px] text-slate-400 leading-none mb-0.5">السيولة النقدية</div>
+                <div id="hudCash" class="font-mono-num font-bold text-sm md:text-base text-emerald-400">$25,000</div>
+            </div>
+
+            <!-- Net Worth -->
+            <div class="shrink-0">
+                <div class="text-[10px] text-slate-400 leading-none mb-0.5">صافي الثروة</div>
+                <div id="hudNetWorth" class="font-mono-num font-bold text-sm md:text-base text-cyan-300">$25,000</div>
+            </div>
+
+            <!-- Daily Income -->
+            <div class="shrink-0 hidden md:block">
+                <div class="text-[10px] text-slate-400 leading-none mb-0.5">صافي آخر يوم</div>
+                <div id="hudDailyProfit" class="font-mono-num font-bold text-sm text-slate-300">$0</div>
+            </div>
+
+            <!-- Day Counter -->
+            <div class="shrink-0 bg-slate-900/80 border border-slate-700/70 rounded-lg px-2.5 py-1">
+                <div class="text-[10px] text-slate-400 leading-none">اليوم</div>
+                <div id="hudDay" class="font-mono-num font-bold text-xs text-amber-300">1</div>
+            </div>
+        </div>
+
+        <!-- Time Controls & Heatmap Filter -->
+        <div class="glass-panel rounded-xl px-2.5 py-1.5 flex items-center gap-2 pointer-events-auto">
+            <!-- Speed Buttons -->
+            <div class="flex items-center bg-slate-900/90 rounded-lg p-0.5 border border-slate-700/60" id="speedControls">
+                <button data-speed="0" class="speed-btn btn-tactical px-2.5 py-1 rounded-md text-xs font-bold text-slate-300 hover:text-white" title="إيقاف مؤقت">⏸</button>
+                <button data-speed="1" class="speed-btn btn-tactical px-2.5 py-1 rounded-md text-xs font-bold bg-cyan-500/25 text-cyan-300 border border-cyan-400/40" title="سرعة عادية">1x</button>
+                <button data-speed="3" class="speed-btn btn-tactical px-2.5 py-1 rounded-md text-xs font-bold text-slate-300 hover:text-white" title="سريع">3x</button>
+                <button data-speed="8" class="speed-btn btn-tactical px-2.5 py-1 rounded-md text-xs font-bold text-slate-300 hover:text-white" title="فائق السرعة">8x</button>
+            </div>
+
+            <!-- Heatmap Selector -->
+            <div class="flex items-center gap-1.5">
+                <span class="text-[11px] text-slate-400 hidden sm:inline">خريطة الأسعار:</span>
+                <select id="heatmapSelect" class="bg-slate-900 border border-slate-700 text-xs text-cyan-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-cyan-400 cursor-pointer">
+                    <option value="none">👁️ عرض تكتيكي عادي</option>
+                    <option value="oil">🛢️ نفط خام</option>
+                    <option value="iron">⛏️ حديد خام</option>
+                    <option value="wheat">🌾 قمح</option>
+                    <option value="silicon">💎 سيليكون</option>
+                    <option value="fuel">⛽ وقود مكرر</option>
+                    <option value="steel">🏗️ فولاذ</option>
+                    <option value="food">🍞 غذاء مصنّع</option>
+                    <option value="tech">💻 إلكترونيات</option>
+                </select>
+            </div>
+
+            <!-- Sound & Help -->
+            <button id="btnSound" class="btn-tactical w-8 h-8 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 flex items-center justify-center text-sm" title="تفعيل/كتم الصوت">🔊</button>
+            <button id="btnHelp" class="btn-tactical w-8 h-8 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 flex items-center justify-center text-xs font-bold text-cyan-300" title="دليل اللعب">؟</button>
+        </div>
+    </header>
+
+    <!-- ==================== ROUTE CREATION BANNER ==================== -->
+    <div id="routeModeBanner" class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-30 glass-panel route-selecting-banner rounded-xl px-4 py-2.5 border-cyan-400/70 flex items-center gap-3 max-w-[92vw]">
+        <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping shrink-0"></span>
+        <div class="text-xs sm:text-sm font-bold text-cyan-100" id="routeModeText">
+            اختر المدينة الوجهة على الخريطة لإكمال خط الشحن...
+        </div>
+        <button id="btnCancelRouteMode" class="btn-tactical px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/40 border border-rose-400/50 text-rose-200 text-xs font-bold shrink-0">إلغاء</button>
+    </div>
+
+    <!-- ==================== MISSION / OBJECTIVE TRACKER (Top Right below HUD) ==================== -->
+    <div id="missionBox" class="fixed top-20 right-2 z-10 glass-panel rounded-xl p-3 w-64 hidden lg:block">
+        <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[11px] font-bold text-amber-300 flex items-center gap-1">🎯 أهداف الهيمنة</span>
+            <button onclick="document.getElementById('missionBox').classList.add('hidden')" class="text-slate-500 hover:text-slate-300 text-xs">✕</button>
+        </div>
+        <ul id="missionList" class="space-y-1.5 text-[11px] text-slate-300">
+            <!-- Populated dynamically -->
+        </ul>
+    </div>
+
+    <!-- ==================== TOAST / NEWS FEED ==================== -->
+    <div id="toastContainer" class="fixed bottom-16 left-2 z-20 flex flex-col gap-1.5 w-72 max-w-[85vw] pointer-events-none"></div>
+
+    <!-- ==================== BOTTOM FLOATING TOOLBAR ==================== -->
+    <div class="fixed bottom-2 left-2 right-2 z-20 flex items-end justify-between pointer-events-none gap-2">
+        <!-- Main Drawer Toggles -->
+        <div class="glass-panel rounded-xl p-1.5 flex items-center gap-1.5 pointer-events-auto">
+            <button id="tabBtnEmpire" onclick="toggleSidePanel('empire')" class="btn-tactical px-3 py-2 rounded-lg text-xs font-bold bg-slate-800/80 hover:bg-slate-700 text-slate-200 flex items-center gap-1.5 border border-slate-700/70">
+                <span>🚛</span><span>إمبراطوريتي</span>
+                <span id="badgeRoutes" class="bg-cyan-500/25 text-cyan-300 px-1.5 rounded text-[10px] font-mono-num">0</span>
+            </button>
+            <button id="tabBtnRivals" onclick="toggleSidePanel('rivals')" class="btn-tactical px-3 py-2 rounded-lg text-xs font-bold bg-slate-800/80 hover:bg-slate-700 text-slate-200 flex items-center gap-1.5 border border-slate-700/70">
+                <span>🤖</span><span>المنافسون</span>
+            </button>
+            <button id="tabBtnMarket" onclick="toggleSidePanel('market')" class="btn-tactical px-3 py-2 rounded-lg text-xs font-bold bg-slate-800/80 hover:bg-slate-700 text-slate-200 flex items-center gap-1.5 border border-slate-700/70">
+                <span>📊</span><span>البورصة</span>
+            </button>
+        </div>
+
+        <!-- Zoom & Center Camera Controls -->
+        <div class="glass-panel rounded-xl p-1.5 flex items-center gap-1 pointer-events-auto">
+            <button id="btnZoomIn" class="btn-tactical w-8 h-8 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-cyan-300 font-bold text-base border border-slate-700/70" title="تكبير">+</button>
+            <button id="btnZoomOut" class="btn-tactical w-8 h-8 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-cyan-300 font-bold text-base border border-slate-700/70" title="تصغير">−</button>
+            <button id="btnResetCam" class="btn-tactical px-2.5 h-8 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700/70" title="توسيط الخريطة">⌖</button>
+        </div>
+    </div>
+
+    <!-- ==================== NODE INSPECTOR PANEL (Right / Bottom on mobile) ==================== -->
+    <aside id="nodeInspector" class="hidden fixed top-16 md:top-20 right-2 bottom-16 z-30 w-[calc(100vw-1rem)] sm:w-96 glass-panel rounded-2xl flex flex-col overflow-hidden">
+        <!-- Header -->
+        <div class="p-3.5 border-b border-slate-700/70 flex items-start justify-between bg-slate-900/60">
+            <div>
+                <div class="flex items-center gap-2">
+                    <span id="inspIcon" class="text-xl">🏙️</span>
+                    <h2 id="inspName" class="font-extrabold text-base text-white">اسم المدينة</h2>
+                    <span id="inspBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">مدينة</span>
+                </div>
+                <p id="inspSub" class="text-[11px] text-slate-400 mt-0.5">عدد السكان: 120K • موقع استراتيجي</p>
+            </div>
+            <button onclick="closeNodeInspector()" class="btn-tactical w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-sm">✕</button>
+        </div>
+
+        <!-- Inspector Tabs -->
+        <div class="grid grid-cols-3 border-b border-slate-700/70 bg-slate-900/40 text-xs font-bold">
+            <button onclick="switchInspTab('market')" id="inspTabMarket" class="py-2.5 text-cyan-300 border-b-2 border-cyan-400">الأسعار والسوق</button>
+            <button onclick="switchInspTab('build')" id="inspTabBuild" class="py-2.5 text-slate-400 hover:text-slate-200">المنشآت والاستثمار</button>
+            <button onclick="switchInspTab('routes')" id="inspTabRoutes" class="py-2.5 text-slate-400 hover:text-slate-200">خطوط النقل</button>
+        </div>
+
+        <!-- Inspector Body -->
+        <div id="inspContent" class="flex-1 overflow-y-auto p-3 space-y-3">
+            <!-- Populated dynamically -->
+        </div>
+    </aside>
+
+    <!-- ==================== LEFT SIDE PANEL (Empire / Rivals / Global Market) ==================== -->
+    <aside id="sidePanel" class="hidden fixed top-16 md:top-20 left-2 bottom-16 z-30 w-[calc(100vw-1rem)] sm:w-96 glass-panel rounded-2xl flex flex-col overflow-hidden">
+        <div class="p-3.5 border-b border-slate-700/70 flex items-center justify-between bg-slate-900/60">
+            <h2 id="sidePanelTitle" class="font-extrabold text-base text-cyan-300">إمبراطوريتي التجارية</h2>
+            <button onclick="closeSidePanel()" class="btn-tactical w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-sm">✕</button>
+        </div>
+        <div id="sidePanelBody" class="flex-1 overflow-y-auto p-3 space-y-3">
+            <!-- Populated dynamically -->
+        </div>
+    </aside>
+
+    <!-- ==================== ROUTE CONFIGURATION MODAL ==================== -->
+    <div id="routeModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3">
+        <div class="glass-panel rounded-2xl w-full max-w-md overflow-hidden border-cyan-400/40">
+            <div class="p-4 border-b border-slate-700/70 bg-slate-900/70 flex items-center justify-between">
+                <h3 class="font-extrabold text-base text-cyan-300 flex items-center gap-2">🚛 تأسيس خط شحن تجاري</h3>
+                <button onclick="closeRouteModal()" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <div class="p-4 space-y-4">
+                <div class="flex items-center justify-between bg-slate-900/80 rounded-xl p-3 border border-slate-700/60 text-xs">
+                    <div class="text-center flex-1">
+                        <div class="text-slate-400 text-[10px]">المصدر (شراء)</div>
+                        <div id="rmSourceName" class="font-bold text-emerald-300 text-sm mt-0.5">-</div>
+                    </div>
+                    <div class="px-2 text-cyan-400 font-bold text-lg">←</div>
+                    <div class="text-center flex-1">
+                        <div class="text-slate-400 text-[10px]">الوجهة (بيع)</div>
+                        <div id="rmDestName" class="font-bold text-amber-300 text-sm mt-0.5">-</div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-300 font-bold mb-1.5">اختر السلعة المنقولة (مرتبة حسب الربح المتوقع):</label>
+                    <div id="rmCommodityList" class="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                        <!-- Dynamically filled -->
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/70 rounded-xl p-3 border border-slate-700/60 flex items-center justify-between text-xs">
+                    <div>
+                        <div class="text-slate-400">تكلفة شراء الشاحنة وتفعيل الخط</div>
+                        <div class="text-[10px] text-slate-500">سعة الشحنة: 25 وحدة • قابلة للترقية</div>
+                    </div>
+                    <div id="rmCost" class="font-mono-num font-bold text-base text-cyan-300">$3,500</div>
+                </div>
+
+                <div class="flex gap-2">
+                    <button id="btnConfirmRoute" class="btn-tactical flex-1 py-2.5 rounded-xl bg-gradient-to-l from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-sm shadow-lg shadow-cyan-500/20">
+                        إطلاق الشاحنة الآن
+                    </button>
+                    <button onclick="closeRouteModal()" class="btn-tactical px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm">إلغاء</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== HELP / INTRO MODAL ==================== -->
+    <div id="helpModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3">
+        <div class="glass-panel rounded-2xl w-full max-w-lg overflow-hidden border-cyan-400/50">
+            <div class="p-4 border-b border-slate-700/70 bg-gradient-to-l from-cyan-950/80 to-slate-900 flex items-center justify-between">
+                <div>
+                    <h2 class="font-extrabold text-lg text-cyan-300">مرحباً بك في Syndicate Grid</h2>
+                    <p class="text-xs text-slate-400">ابنِ إمبراطوريتك التجارية واهزم البوتات الأربعة في سوق حي</p>
+                </div>
+                <button onclick="closeHelpModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">✕</button>
+            </div>
+            <div class="p-4 space-y-3 text-xs sm:text-sm text-slate-200 leading-relaxed max-h-[65vh] overflow-y-auto">
+                <div class="flex gap-3 bg-slate-900/70 p-3 rounded-xl border border-slate-700/60">
+                    <span class="text-2xl">🗺️</span>
+                    <div>
+                        <div class="font-bold text-cyan-300">1. اكتشف الفجوات السعرية</div>
+                        <p class="text-slate-300 text-xs mt-0.5">استخدم قائمة <b>خريطة الأسعار</b> في الأعلى؛ العقد <span class="text-emerald-400 font-bold">الخضراء</span> رخيصة (وفرة) والعقد <span class="text-rose-400 font-bold">الحمراء</span> غالية (نقص حاد).</p>
+                    </div>
+                </div>
+                <div class="flex gap-3 bg-slate-900/70 p-3 rounded-xl border border-slate-700/60">
+                    <span class="text-2xl">🚛</span>
+                    <div>
+                        <div class="font-bold text-amber-300">2. أنشئ خطوط شحن آلية</div>
+                        <p class="text-slate-300 text-xs mt-0.5">اضغط على أي مدينة أو منجم ثم اختر <b>إنشاء خط شحن</b> وحدد المدينة الوجهة. ستقوم شاحنتك بشراء البضاعة الرخيصة وبيعها تلقائياً هناك وجلب الأرباح المستمرة.</p>
+                    </div>
+                </div>
+                <div class="flex gap-3 bg-slate-900/70 p-3 rounded-xl border border-slate-700/60">
+                    <span class="text-2xl">🏭</span>
+                    <div>
+                        <div class="font-bold text-emerald-300">3. احتكر المصانع والموانئ</div>
+                        <p class="text-slate-300 text-xs mt-0.5">اشترِ <b>مناجم ومزارع</b> لإنتاج المواد الخام، ابنِ <b>مصانع تحويلية</b> داخل المدن (مثلاً نفط ← وقود) لربح ضخم، أو اشترِ <b>الموانئ</b> لفرض رسوم عبور 6% على شاحنات البوتات المنافسة!</p>
+                    </div>
+                </div>
+                <div class="flex gap-3 bg-slate-900/70 p-3 rounded-xl border border-slate-700/60">
+                    <span class="text-2xl">🤖</span>
+                    <div>
+                        <div class="font-bold text-rose-300">4. منافسون أذكياء (4 بوتات)</div>
+                        <p class="text-slate-300 text-xs mt-0.5">ستنافس <b>المحتكر</b> و<b>قناص الفرص</b> و<b>العملاق الصناعي</b> و<b>ملك اللوجستيات</b>. إذا أغرقوا سوقاً وانهارت أرباح خطك، غيّر استراتيجيتك أو اضربهم في عقر دارهم.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-700/70 bg-slate-900/60 flex justify-end">
+                <button onclick="closeHelpModal()" class="btn-tactical w-full sm:w-auto px-8 py-2.5 rounded-xl bg-gradient-to-l from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-sm shadow-lg shadow-cyan-500/25">
+                    ابدأ التداول الآن 🚀
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    /**
+     * ============================================================================
+     * SYNDICATE GRID - Core Offline Economic Simulation & Tactical Map Engine
+     * Single-file architecture: Audio -> Data Definitions -> Economy Core -> AI -> Renderer -> UI
+     * ============================================================================
+     */
+
+    // -------------------- 1. PROCEDURAL TACTICAL AUDIO (Web Audio API) --------------------
+    const SoundFX = {
+        ctx: null,
+        enabled: true,
+        init() {
+            if (!this.ctx) {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtx) this.ctx = new AudioCtx();
+            }
+            if (this.ctx && this.ctx.state === 'suspended') {
+                this.ctx.resume();
+            }
+        },
+        playTone(freq, type = 'sine', duration = 0.08, volume = 0.05) {
+            if (!this.enabled) return;
+            try {
+                this.init();
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            } catch (e) {}
+        },
+        click() { this.playTone(540, 'triangle', 0.05, 0.035); },
+        cash() {
+            this.playTone(780, 'sine', 0.07, 0.04);
+            setTimeout(() => this.playTone(1040, 'sine', 0.12, 0.045), 65);
+        },
+        build() {
+            this.playTone(260, 'sawtooth', 0.08, 0.04);
+            setTimeout(() => this.playTone(440, 'triangle', 0.14, 0.05), 70);
+        },
+        alert() {
+            this.playTone(320, 'square', 0.1, 0.035);
+            setTimeout(() => this.playTone(240, 'square', 0.15, 0.035), 110);
+        }
+    };
+
+    // -------------------- 2. COMMODITIES & FACILITIES DEFINITIONS --------------------
+    const COMMODITIES = {
+        oil:     { id: 'oil',     name: 'نفط خام',     icon: '🛢️', tier: 1, basePrice: 45,  color: '#64748b' },
+        iron:    { id: 'iron',    name: 'حديد خام',    icon: '⛏️', tier: 1, basePrice: 40,  color: '#94a3b8' },
+        wheat:   { id: 'wheat',   name: 'قمح',         icon: '🌾', tier: 1, basePrice: 30,  color: '#eab308' },
+        silicon: { id: 'silicon', name: 'سيليكون',     icon: '💎', tier: 1, basePrice: 75,  color: '#38bdf8' },
+        fuel:    { id: 'fuel',    name: 'وقود مكرر',   icon: '⛽', tier: 2, basePrice: 125, input: 'oil',     color: '#f97316' },
+        steel:   { id: 'steel',   name: 'فولاذ',       icon: '🏗️', tier: 2, basePrice: 115, input: 'iron',    color: '#cbd5e1' },
+        food:    { id: 'food',    name: 'غذاء مصنّع',  icon: '🍞', tier: 2, basePrice: 88,  input: 'wheat',   color: '#84cc16' },
+        tech:    { id: 'tech',    name: 'إلكترونيات',  icon: '💻', tier: 2, basePrice: 215, input: 'silicon', color: '#a855f7' }
+    };
+    const COMM_KEYS = Object.keys(COMMODITIES);
+
+    const FACILITY_TYPES = {
+        extractor_oil:     { name: 'حقل استخراج نفط',     icon: '🛢️', cost: 11000, upkeep: 120, output: 'oil',     rate: 16, nodeType: 'oil' },
+        extractor_iron:    { name: 'منجم حديد متطور',     icon: '⛏️', cost: 10000, upkeep: 110, output: 'iron',    rate: 18, nodeType: 'iron' },
+        extractor_wheat:   { name: 'مزرعة قمح صناعية',    icon: '🌾', cost: 8500,  upkeep: 90,  output: 'wheat',   rate: 22, nodeType: 'wheat' },
+        extractor_silicon: { name: 'منجم سيليكون نقي',    icon: '💎', cost: 15500, upkeep: 160, output: 'silicon', rate: 13, nodeType: 'silicon' },
+        factory_fuel:      { name: 'مصفاة وقود',          icon: '⛽', cost: 18000, upkeep: 200, input: 'oil',     output: 'fuel',  inRate: 14, outRate: 12, nodeType: 'city' },
+        factory_steel:     { name: 'مصنع فولاذ',          icon: '🏗️', cost: 17000, upkeep: 180, input: 'iron',    output: 'steel', inRate: 15, outRate: 13, nodeType: 'city' },
+        factory_food:      { name: 'مجمع أغذية',          icon: '🍞', cost: 14000, upkeep: 140, input: 'wheat',   output: 'food',  inRate: 18, outRate: 16, nodeType: 'city' },
+        factory_tech:      { name: 'مصنع إلكترونيات',     icon: '💻', cost: 26000, upkeep: 280, input: 'silicon', output: 'tech',  inRate: 11, outRate: 9,  nodeType: 'city' },
+        port_rights:       { name: 'حقوق امتياز الميناء', icon: '⚓', cost: 22000, upkeep: 150, tollRate: 0.06,    nodeType: 'port' }
+    };
+
+    // -------------------- 3. ACTORS (PLAYER + 4 DISTINCT AI BOTS) --------------------
+    function createInitialActors() {
+        return [
+            { id: 'player', name: 'إمبراطوريتك', role: 'اللاعب', color: '#22d3ee', isBot: false, cash: 25000, netWorth: 25000, dailyProfit: 0, dayAccProfit: 0, totalTolls: 0 },
+            { id: 'bot_mono', name: 'سنديكيت الصقر', role: 'المحتكر', color: '#f43f5e', isBot: true, strategy: 'monopolist', cash: 26000, netWorth: 26000, dailyProfit: 0, dayAccProfit: 0, totalTolls: 0 },
+            { id: 'bot_arb',  name: 'شركة البرق',   role: 'قناص الفرص', color: '#f59e0b', isBot: true, strategy: 'arbitrageur', cash: 25000, netWorth: 25000, dailyProfit: 0, dayAccProfit: 0, totalTolls: 0 },
+            { id: 'bot_ind',  name: 'مجموعة الترس', role: 'العملاق الصناعي', color: '#a855f7', isBot: true, strategy: 'industrialist', cash: 27000, netWorth: 27000, dailyProfit: 0, dayAccProfit: 0, totalTolls: 0 },
+            { id: 'bot_log',  name: 'موانئ الشرق',  role: 'ملك اللوجستيات', color: '#10b981', isBot: true, strategy: 'logistics', cash: 26000, netWorth: 26000, dailyProfit: 0, dayAccProfit: 0, totalTolls: 0 }
+        ];
+    }
+
+    // -------------------- 4. WORLD STATE & PROCEDURAL NETWORK GENERATOR --------------------
+    const Game = {
+        actors: [],
+        nodes: [],
+        edges: [],
+        facilities: [],
+        routes: [],
+        floatingTexts: [],
+        newsLog: [],
+        day: 1,
+        dayProgress: 0, // 0 to 1 per simulated day
+        speed: 1,       // 0, 1, 3, 8
+        heatmap: 'none',
+        selectedNodeId: null,
+        inspTab: 'market',
+        activeSidePanel: null,
+        routeCreationSourceId: null,
+        pendingRoute: null,
+        activeEvent: null,
+        missions: [
+            { id: 'm1', text: 'أنشئ أول خط شحن تجاري', done: false },
+            { id: 'm2', text: 'اشترِ أول منشأة إنتاجية أو ميناء', done: false },
+            { id: 'm3', text: 'ارفع صافي ثروتك إلى $75,000', done: false },
+            { id: 'm4', text: 'تصدّر المركز الأول ضد البوتات', done: false }
+        ],
+        nextFacilityId: 1,
+        nextRouteId: 1,
+        lastFrameTime: 0,
+        uiRefreshTimer: 0
+    };
+
+    const NODE_TEMPLATES = [
+        // Major Consumption Cities
+        { name: 'العاصمة الكبرى', type: 'city', x: 0, y: -40, pop: 420 },
+        { name: 'بوابة النهر',     type: 'city', x: -340, y: -180, pop: 290 },
+        { name: 'مدينة الأفق',     type: 'city', x: 360, y: -150, pop: 320 },
+        { name: 'ساحل اللؤلؤ',     type: 'city', x: -290, y: 230, pop: 270 },
+        { name: 'واحة النخيل',     type: 'city', x: 310, y: 220, pop: 250 },
+        { name: 'برج الشمال',      type: 'city', x: -20, y: -380, pop: 240 },
+        { name: 'قلعة الجنوب',     type: 'city', x: 30, y: 390, pop: 260 },
+        { name: 'مفرق القوافل',    type: 'city', x: -640, y: 20, pop: 210 },
+        { name: 'مدينة المستقبل',  type: 'city', x: 660, y: 30, pop: 310 },
+
+        // Strategic Transit Ports (Chokepoints for Tolls)
+        { name: 'ميناء الخليج',    type: 'port', x: -160, y: 70, pop: 130 },
+        { name: 'ميناء الشرق',     type: 'port', x: 185, y: 45, pop: 140 },
+        { name: 'معبر الشمال',     type: 'port', x: -175, y: -230, pop: 110 },
+        { name: 'معبر الجنوب',     type: 'port', x: 180, y: 280, pop: 120 },
+
+        // Resource Hubs (Raw Material Producers)
+        { name: 'حقول الرميلة',    type: 'oil',     x: -480, y: 340, pop: 55 },
+        { name: 'آبار الصحراء',    type: 'oil',     x: 520, y: -310, pop: 60 },
+        { name: 'جبال الحديد',     type: 'iron',    x: -510, y: -330, pop: 65 },
+        { name: 'وادي الصخر',      type: 'iron',    x: 490, y: 350, pop: 60 },
+        { name: 'سهول الرافدين',   type: 'wheat',   x: -180, y: 390, pop: 75 },
+        { name: 'مروج الشمال',     type: 'wheat',   x: 240, y: -360, pop: 70 },
+        { name: 'وادي السيليكون',  type: 'silicon', x: 760, y: -210, pop: 50 },
+        { name: 'مناجم الكوارتز',  type: 'silicon', x: -750, y: -150, pop: 50 },
+        { name: 'سهول الغرب',      type: 'wheat',   x: -720, y: 230, pop: 65 },
+        { name: 'حقل البترول شرق', type: 'oil',     x: 740, y: 240, pop: 55 },
+        { name: 'قمة الفولاذ',     type: 'iron',    x: -40, y: -530, pop: 55 }
+    ];
+
+    function initWorld() {
+        Game.actors = createInitialActors();
+        Game.nodes = [];
+        Game.edges = [];
+        Game.facilities = [];
+        Game.routes = [];
+        Game.floatingTexts = [];
+        Game.newsLog = [];
+        Game.day = 1;
+        Game.dayProgress = 0;
+
+        // Build Nodes with slightly randomized coordinates for organic feel
+        NODE_TEMPLATES.forEach((tpl, idx) => {
+            const jitterX = (Math.random() - 0.5) * 32;
+            const jitterY = (Math.random() - 0.5) * 32;
+            const stock = {};
+            const targetStock = {};
+            const prices = {};
+            const priceHistory = {};
+
+            COMM_KEYS.forEach(c => {
+                let baseTarget = tpl.type === 'city' ? (COMMODITIES[c].tier === 2 ? 120 : 80) : 65;
+                let initStock = baseTarget * (0.75 + Math.random() * 0.5);
+
+                // Resource hubs start rich in their raw commodity
+                if (tpl.type === c) {
+                    baseTarget = 160;
+                    initStock = 260 + Math.random() * 60;
+                }
+                // Cities start hungry for Tier 2 finished goods
+                if (tpl.type === 'city' && COMMODITIES[c].tier === 2) {
+                    initStock = 40 + Math.random() * 45;
+                }
+
+                stock[c] = initStock;
+                targetStock[c] = baseTarget;
+                prices[c] = calcPrice(c, initStock, baseTarget);
+                priceHistory[c] = [prices[c]];
+            });
+
+            Game.nodes.push({
+                id: idx,
+                name: tpl.name,
+                type: tpl.type, // 'city' | 'port' | 'oil' | 'iron' | 'wheat' | 'silicon'
+                x: tpl.x + jitterX,
+                y: tpl.y + jitterY,
+                pop: tpl.pop,
+                stock,
+                targetStock,
+                prices,
+                priceHistory,
+                maxSlots: tpl.type === 'city' ? 3 : 1,
+                portOwnerId: null
+            });
+        });
+
+        // Build Connected Road Network (Nearest Neighbors + Minimum Spanning Tree guarantee)
+        buildRoadGraph();
+
+        // Seed 2 starter NPC factories in major cities so Tier 2 goods exist early on
+        addInitialNeutralBoost();
+
+        addNews('🚀 افتتحت البورصة الإقليمية! ابدأ بإنشاء خطوط شحن لاستغلال فروقات الأسعار.', 'cyan');
+        updateHUD();
+        updateMissions();
+    }
+
+    function buildRoadGraph() {
+        const n = Game.nodes.length;
+        const adj = new Set();
+        const addEdge = (a, b) => {
+            if (a === b) return;
+            const key = a < b ? `${a}-${b}` : `${b}-${a}`;
+            if (adj.has(key)) return;
+            adj.add(key);
+            const na = Game.nodes[a], nb = Game.nodes[b];
+            const dist = Math.hypot(na.x - nb.x, na.y - nb.y);
+            const isSea = (na.type === 'port' && nb.type === 'port');
+            Game.edges.push({ a, b, dist, isSea });
+        };
+
+        // Prim's MST to guarantee full connectivity
+        const visited = new Set([0]);
+        while (visited.size < n) {
+            let bestA = -1, bestB = -1, bestD = Infinity;
+            visited.forEach(u => {
+                for (let v = 0; v < n; v++) {
+                    if (visited.has(v)) continue;
+                    const d = Math.hypot(Game.nodes[u].x - Game.nodes[v].x, Game.nodes[u].y - Game.nodes[v].y);
+                    if (d < bestD) { bestD = d; bestA = u; bestB = v; }
+                }
+            });
+            visited.add(bestB);
+            addEdge(bestA, bestB);
+        }
+
+        // Add strategic secondary connections (2 closest neighbors within range)
+        for (let i = 0; i < n; i++) {
+            const dists = [];
+            for (let j = 0; j < n; j++) {
+                if (i === j) continue;
+                const d = Math.hypot(Game.nodes[i].x - Game.nodes[j].x, Game.nodes[i].y - Game.nodes[j].y);
+                if (d < 360) dists.push({ j, d });
+            }
+            dists.sort((x, y) => x.d - y.d);
+            for (let k = 0; k < Math.min(2, dists.length); k++) {
+                addEdge(i, dists[k].j);
+            }
+        }
+    }
+
+    function addInitialNeutralBoost() {
+        // Give cities slightly varied local supply so immediate arbitrage opportunities shine
+        Game.nodes.forEach(node => {
+            if (node.type === 'city') {
+                const cheapPick = COMM_KEYS[Math.floor(Math.random() * 4) + 4];
+                node.stock[cheapPick] = 175;
+                node.prices[cheapPick] = calcPrice(cheapPick, node.stock[cheapPick], node.targetStock[cheapPick]);
+            }
+        });
+    }
+
+    // Dijkstra shortest path returning array of node IDs
+    function findShortestPath(startId, endId) {
+        if (startId === endId) return [startId];
+        const dist = {};
+        const prev = {};
+        const unvisited = new Set();
+
+        Game.nodes.forEach(n => {
+            dist[n.id] = Infinity;
+            prev[n.id] = null;
+            unvisited.add(n.id);
+        });
+        dist[startId] = 0;
+
+        while (unvisited.size > 0) {
+            let u = null, minD = Infinity;
+            unvisited.forEach(id => {
+                if (dist[id] < minD) { minD = dist[id]; u = id; }
+            });
+            if (u === null || u === endId) break;
+            unvisited.delete(u);
+
+            Game.edges.forEach(e => {
+                let v = null;
+                if (e.a === u) v = e.b;
+                else if (e.b === u) v = e.a;
+                if (v !== null && unvisited.has(v)) {
+                    const alt = dist[u] + e.dist;
+                    if (alt < dist[v]) {
+                        dist[v] = alt;
+                        prev[v] = u;
+                    }
+                }
+            });
+        }
+
+        const path = [];
+        let curr = endId;
+        while (curr !== null) {
+            path.unshift(curr);
+            curr = prev[curr];
+        }
+        return path.length > 1 ? path : [startId, endId];
+    }
+
+    function getPathDistance(path) {
+        let total = 0;
+        for (let i = 0; i < path.length - 1; i++) {
+            const a = Game.nodes[path[i]], b = Game.nodes[path[i + 1]];
+            total += Math.hypot(a.x - b.x, a.y - b.y);
+        }
+        return total;
+    }
+
+    // -------------------- 5. ECONOMY SIMULATION CORE --------------------
+    function calcPrice(commId, stock, targetStock) {
+        const base = COMMODITIES[commId].basePrice;
+        const ratio = targetStock / Math.max(stock, 14);
+        const mult = Math.max(0.38, Math.min(2.85, Math.pow(ratio, 0.85)));
+        let eventMult = 1;
+        if (Game.activeEvent && Game.activeEvent.comm === commId) {
+            eventMult = Game.activeEvent.mult;
+        }
+        return Math.round(base * mult * eventMult);
+    }
+
+    function getActor(actorId) {
+        return Game.actors.find(a => a.id === actorId);
+    }
+
+    function buyFacility(actorId, nodeId, facKey) {
+        const actor = getActor(actorId);
+        const node = Game.nodes[nodeId];
+        const def = FACILITY_TYPES[facKey];
+        if (!actor || !node || !def) return false;
+
+        // Check slots
+        const existingHere = Game.facilities.filter(f => f.nodeId === nodeId);
+        if (existingHere.length >= node.maxSlots) return false;
+        if (facKey === 'port_rights' && node.portOwnerId) return false;
+        if (actor.cash < def.cost) return false;
+
+        actor.cash -= def.cost;
+        const fac = {
+            id: Game.nextFacilityId++,
+            ownerId: actorId,
+            nodeId,
+            type: facKey,
+            lastProfit: 0,
+            level: 1
+        };
+        Game.facilities.push(fac);
+
+        if (facKey === 'port_rights') {
+            node.portOwnerId = actorId;
+        }
+
+        if (actorId === 'player') {
+            SoundFX.build();
+            spawnFloatingText(node.x, node.y - 24, `بناء ${def.name}`, '#22d3ee');
+            addNews(`🏗️ قمت بامتلاك ${def.name} في ${node.name}.`, 'emerald');
+            updateMissions();
+        } else {
+            addNews(`🤖 ${actor.name} استحوذ على ${def.name} في ${node.name}.`, 'slate');
+        }
+        return true;
+    }
+
+    function sellFacility(facId) {
+        const idx = Game.facilities.findIndex(f => f.id === facId);
+        if (idx === -1) return;
+        const fac = Game.facilities[idx];
+        const def = FACILITY_TYPES[fac.type];
+        const actor = getActor(fac.ownerId);
+        const refund = Math.round(def.cost * 0.65);
+        actor.cash += refund;
+        if (fac.type === 'port_rights') {
+            Game.nodes[fac.nodeId].portOwnerId = null;
+        }
+        Game.facilities.splice(idx, 1);
+        if (fac.ownerId === 'player') {
+            SoundFX.cash();
+            addNews(`💰 بعت ${def.name} واسترددت $${refund.toLocaleString()}.`, 'amber');
+        }
+    }
+
+    function createTradeRoute(actorId, sourceId, destId, commId) {
+        const actor = getActor(actorId);
+        const path = findShortestPath(sourceId, destId);
+        if (path.length < 2) return false;
+
+        const dist = getPathDistance(path);
+        const cost = 3500;
+        if (actor.cash < cost) return false;
+
+        actor.cash -= cost;
+        const route = {
+            id: Game.nextRouteId++,
+            ownerId: actorId,
+            sourceId,
+            destId,
+            commId,
+            path,
+            totalDist: dist,
+            capacity: 25,
+            speed: 135, // world pixels per simulated day
+            progress: 0, // 0 to 1 along current direction
+            dir: 1,      // 1 = source->dest (loaded), -1 = dest->source (empty)
+            cargo: 0,
+            buyCost: 0,
+            lastTripProfit: 0,
+            totalProfit: 0,
+            trips: 0,
+            level: 1
+        };
+
+        // Load initial cargo at source immediately
+        loadConvoyAtSource(route);
+        Game.routes.push(route);
+
+        if (actorId === 'player') {
+            SoundFX.build();
+            const sNode = Game.nodes[sourceId], dNode = Game.nodes[destId];
+            addNews(`🚛 أطلقت خط شحن ${COMMODITIES[commId].name} من ${sNode.name} إلى ${dNode.name}.`, 'cyan');
+            updateMissions();
+        }
+        return true;
+    }
+
+    function upgradeRoute(routeId) {
+        const r = Game.routes.find(x => x.id === routeId);
+        if (!r || r.level >= 4) return;
+        const actor = getActor(r.ownerId);
+        const cost = 3000 * r.level;
+        if (actor.cash < cost) {
+            if (r.ownerId === 'player') addNews('⚠️ السيولة النقدية غير كافية للترقية!', 'rose');
+            return;
+        }
+        actor.cash -= cost;
+        r.level++;
+        r.capacity += 20;
+        r.speed += 28;
+        if (r.ownerId === 'player') {
+            SoundFX.build();
+            addNews(`⚡ تمت ترقية خط الشحن #${r.id} إلى المستوى ${r.level} (سعة ${r.capacity} وحدة).`, 'cyan');
+        }
+    }
+
+    function deleteRoute(routeId) {
+        const idx = Game.routes.findIndex(r => r.id === routeId);
+        if (idx === -1) return;
+        const r = Game.routes[idx];
+        const actor = getActor(r.ownerId);
+        const refund = 1800 * r.level;
+        actor.cash += refund;
+        Game.routes.splice(idx, 1);
+        if (r.ownerId === 'player') {
+            SoundFX.click();
+            addNews(`🗑️ تم إلغاء خط الشحن واسترداد $${refund.toLocaleString()}.`, 'slate');
+        }
+    }
+
+    function loadConvoyAtSource(route) {
+        const src = Game.nodes[route.sourceId];
+        const actor = getActor(route.ownerId);
+        const c = route.commId;
+        const unitPrice = src.prices[c];
+        const available = Math.floor(Math.max(0, src.stock[c] - 8));
+        const maxAfford = Math.floor(Math.max(0, actor.cash) / Math.max(1, unitPrice));
+        const qty = Math.min(route.capacity, available, maxAfford);
+
+        if (qty > 0) {
+            const totalCost = qty * unitPrice;
+            actor.cash -= totalCost;
+            actor.dayAccProfit -= totalCost;
+            src.stock[c] -= qty;
+            src.prices[c] = calcPrice(c, src.stock[c], src.targetStock[c]);
+            route.cargo = qty;
+            route.buyCost = totalCost;
+        } else {
+            route.cargo = 0;
+            route.buyCost = 0;
+        }
+    }
+
+    function unloadConvoyAtDest(route) {
+        if (route.cargo <= 0) return;
+        const dst = Game.nodes[route.destId];
+        const actor = getActor(route.ownerId);
+        const c = route.commId;
+        const unitPrice = dst.prices[c];
+        const grossRevenue = route.cargo * unitPrice;
+
+        // Calculate Port Transit Tolls along path
+        let tollPaid = 0;
+        route.path.forEach(nid => {
+            const pNode = Game.nodes[nid];
+            if (pNode.type === 'port' && pNode.portOwnerId && pNode.portOwnerId !== route.ownerId) {
+                const toll = Math.round(grossRevenue * 0.06);
+                tollPaid += toll;
+                const portOwner = getActor(pNode.portOwnerId);
+                if (portOwner) {
+                    portOwner.cash += toll;
+                    portOwner.dayAccProfit += toll;
+                    portOwner.totalTolls += toll;
+                    if (portOwner.id === 'player') {
+                        spawnFloatingText(pNode.x, pNode.y - 18, `+$${toll} رسوم ميناء`, '#34d399');
+                    }
+                }
+            }
+        });
+
+        // Transport fuel/driver operating cost
+        const opCost = Math.round(route.totalDist * 0.35);
+        const netRevenue = grossRevenue - tollPaid - opCost;
+
+        actor.cash += netRevenue;
+        actor.dayAccProfit += netRevenue;
+
+        dst.stock[c] += route.cargo;
+        dst.prices[c] = calcPrice(c, dst.stock[c], dst.targetStock[c]);
+
+        const tripProfit = netRevenue - route.buyCost;
+        route.lastTripProfit = tripProfit;
+        route.totalProfit += tripProfit;
+        route.trips++;
+        route.cargo = 0;
+        route.buyCost = 0;
+
+        if (route.ownerId === 'player') {
+            const sign = tripProfit >= 0 ? '+' : '';
+            const col = tripProfit >= 0 ? '#10b981' : '#f43f5e';
+            spawnFloatingText(dst.x, dst.y - 22, `${sign}$${tripProfit.toLocaleString()}`, col);
+            if (tripProfit > 0) SoundFX.cash();
+        }
+    }
+
+    function simulateDayTick() {
+        Game.day++;
+
+        // 1. Passive Node Production & City Consumption
+        Game.nodes.forEach(node => {
+            // Resource nodes naturally trickle raw goods
+            if (['oil', 'iron', 'wheat', 'silicon'].includes(node.type)) {
+                node.stock[node.type] = Math.min(420, node.stock[node.type] + 10);
+            }
+
+            // Cities consume finished goods based on population
+            if (node.type === 'city') {
+                const factor = node.pop / 240;
+                ['fuel', 'steel', 'food', 'tech'].forEach(c => {
+                    const consume = (5.5 * factor) * (0.85 + Math.random() * 0.3);
+                    node.stock[c] = Math.max(6, node.stock[c] - consume);
+                });
+                // Small raw demand
+                ['oil', 'iron', 'wheat', 'silicon'].forEach(c => {
+                    node.stock[c] = Math.max(8, node.stock[c] - 1.5 * factor);
+                });
+            }
+
+            // Gentle mean-reversion on untouched ports/hubs
+            if (node.type === 'port') {
+                COMM_KEYS.forEach(c => {
+                    node.stock[c] += (node.targetStock[c] - node.stock[c]) * 0.03;
+                });
+            }
+        });
+
+        // 2. Owned Facilities Production & Profit
+        Game.facilities.forEach(fac => {
+            const def = FACILITY_TYPES[fac.type];
+            const node = Game.nodes[fac.nodeId];
+            const owner = getActor(fac.ownerId);
+            if (!owner) return;
+
+            let profit = -def.upkeep;
+
+            if (def.input && def.output) {
+                // Factory: buys input locally, sells output locally
+                const inQty = Math.min(def.inRate, Math.floor(Math.max(0, node.stock[def.input] - 6)));
+                if (inQty >= 3) {
+                    const ratio = inQty / def.inRate;
+                    const outQty = Math.round(def.outRate * ratio);
+                    const inCost = inQty * node.prices[def.input];
+                    const outRev = outQty * node.prices[def.output];
+
+                    node.stock[def.input] -= inQty;
+                    node.stock[def.output] = Math.min(380, node.stock[def.output] + outQty);
+                    profit += (outRev - inCost);
+                }
+            } else if (def.output) {
+                // Extractor: generates raw resource and sells into local market
+                const outQty = def.rate;
+                const rev = Math.round(outQty * node.prices[def.output] * 0.72); // wholesale margin
+                node.stock[def.output] = Math.min(460, node.stock[def.output] + outQty);
+                profit += rev;
+            }
+
+            fac.lastProfit = Math.round(profit);
+            owner.cash += fac.lastProfit;
+            owner.dayAccProfit += fac.lastProfit;
+        });
+
+        // 3. Recalculate All Prices & Record History
+        Game.nodes.forEach(node => {
+            COMM_KEYS.forEach(c => {
+                node.prices[c] = calcPrice(c, node.stock[c], node.targetStock[c]);
+                node.priceHistory[c].push(node.prices[c]);
+                if (node.priceHistory[c].length > 24) node.priceHistory[c].shift();
+            });
+        });
+
+        // 4. Finalize Daily Profit & Compute Net Worth for All Actors
+        Game.actors.forEach(actor => {
+            actor.dailyProfit = Math.round(actor.dayAccProfit);
+            actor.dayAccProfit = 0;
+
+            let assets = 0;
+            Game.facilities.forEach(f => {
+                if (f.ownerId === actor.id) assets += FACILITY_TYPES[f.type].cost * 0.85;
+            });
+            Game.routes.forEach(r => {
+                if (r.ownerId === actor.id) assets += 3000 * r.level;
+            });
+            actor.netWorth = Math.round(actor.cash + assets);
+        });
+
+        // 5. Dynamic Market Events (Every 18 days)
+        if (Game.activeEvent) {
+            Game.activeEvent.daysLeft--;
+            if (Game.activeEvent.daysLeft <= 0) {
+                addNews(`📉 انتهت أزمة ${Game.activeEvent.title} وعادت الأسعار للاستقرار.`, 'slate');
+                Game.activeEvent = null;
+            }
+        } else if (Game.day > 5 && Game.day % 16 === 0) {
+            triggerRandomEvent();
+        }
+
+        // 6. Run AI Bot Decisions (Staggered every 2 days)
+        if (Game.day >= 2) {
+            runBotsAI();
+        }
+
+        updateMissions();
+        updateHUD();
+        if (Game.selectedNodeId !== null) renderInspector();
+        if (Game.activeSidePanel) renderSidePanel();
+    }
+
+    function triggerRandomEvent() {
+        const events = [
+            { title: 'طفرة التكنولوجيا', comm: 'tech', mult: 1.45, daysLeft: 10, msg: '🔥 طفرة إلكترونيات! الطلب على الإلكترونيات قفز +45%!' },
+            { title: 'أزمة الطاقة العالمية', comm: 'fuel', mult: 1.50, daysLeft: 9, msg: '⛽ أزمة وقود حادة! أسعار الوقود المكرر ارتفعت +50%!' },
+            { title: 'موسم جفاف إقليمي', comm: 'food', mult: 1.42, daysLeft: 10, msg: '🌾 جفاف يضرب المزارع! أسعار الغذاء المصنّع قفزت +42%!' },
+            { title: 'نهضة عمرانية كبرى', comm: 'steel', mult: 1.45, daysLeft: 10, msg: '🏗️ مشاريع بناء عملاقة! أسعار الفولاذ ارتفعت +45%!' }
+        ];
+        const ev = events[Math.floor(Math.random() * events.length)];
+        Game.activeEvent = { ...ev };
+        SoundFX.alert();
+        addNews(ev.msg, 'amber');
+    }
+
+    // -------------------- 6. SMART UTILITY AI FOR THE 4 BOTS --------------------
+    function runBotsAI() {
+        const bots = Game.actors.filter(a => a.isBot);
+        bots.forEach((bot, idx) => {
+            // Stagger bot decisions so they act naturally over time
+            if ((Game.day + idx) % 3 !== 0) return;
+
+            // 1. Prune losing routes
+            const myRoutes = Game.routes.filter(r => r.ownerId === bot.id);
+            myRoutes.forEach(r => {
+                if (r.trips >= 3 && r.lastTripProfit < -120) {
+                    deleteRoute(r.id);
+                }
+            });
+
+            // 2. Strategy-driven investment
+            const myFacs = Game.facilities.filter(f => f.ownerId === bot.id);
+
+            if (bot.strategy === 'monopolist') {
+                // Prioritizes owning raw resource extractors
+                if (bot.cash > 12000 && Math.random() < 0.7) {
+                    const freeRes = Game.nodes.filter(n =>
+                        ['oil', 'iron', 'wheat', 'silicon'].includes(n.type) &&
+                        !Game.facilities.some(f => f.nodeId === n.id)
+                    );
+                    if (freeRes.length > 0) {
+                        const target = freeRes[Math.floor(Math.random() * freeRes.length)];
+                        if (buyFacility(bot.id, target.id, 'extractor_' + target.type)) return;
+                    }
+                }
+                botTryBestTradeRoute(bot, 10);
+            }
+            else if (bot.strategy === 'arbitrageur') {
+                // Spams fast, high-margin trade routes and upgrades profitable ones
+                const profitable = myRoutes.find(r => r.lastTripProfit > 500 && r.level < 3);
+                if (profitable && bot.cash > 5500 && Math.random() < 0.4) {
+                    upgradeRoute(profitable.id);
+                    return;
+                }
+                if (myRoutes.length < 14) {
+                    botTryBestTradeRoute(bot, 14);
+                }
+            }
+            else if (bot.strategy === 'industrialist') {
+                // Builds factories in populous cities
+                if (bot.cash > 19000 && myFacs.length < 6) {
+                    const cities = Game.nodes.filter(n =>
+                        n.type === 'city' &&
+                        Game.facilities.filter(f => f.nodeId === n.id).length < n.maxSlots
+                    );
+                    if (cities.length > 0) {
+                        const city = cities[Math.floor(Math.random() * cities.length)];
+                        const facKeys = ['factory_fuel', 'factory_steel', 'factory_food', 'factory_tech'];
+                        // Pick best margin factory for this city
+                        let bestKey = null, bestMargin = -Infinity;
+                        facKeys.forEach(fk => {
+                            const d = FACILITY_TYPES[fk];
+                            if (bot.cash >= d.cost) {
+                                const margin = (city.prices[d.output] * d.outRate) - (city.prices[d.input] * d.inRate);
+                                if (margin > bestMargin) { bestMargin = margin; bestKey = fk; }
+                            }
+                        });
+                        if (bestKey && bestMargin > 250) {
+                            if (buyFacility(bot.id, city.id, bestKey)) return;
+                        }
+                    }
+                }
+                botTryBestTradeRoute(bot, 8);
+            }
+            else if (bot.strategy === 'logistics') {
+                // Snatches Ports first to collect tolls from everyone
+                if (bot.cash > 23000) {
+                    const freePort = Game.nodes.find(n => n.type === 'port' && !n.portOwnerId);
+                    if (freePort && buyFacility(bot.id, freePort.id, 'port_rights')) return;
+                }
+                botTryBestTradeRoute(bot, 11);
+            }
+        });
+    }
+
+    function botTryBestTradeRoute(bot, maxRoutes) {
+        const current = Game.routes.filter(r => r.ownerId === bot.id).length;
+        if (current >= maxRoutes || bot.cash < 6000) return;
+
+        let bestDeal = null;
+        let bestScore = 220; // minimum profit threshold
+
+        // Sample pairs to keep AI ultra-fast
+        for (let i = 0; i < 18; i++) {
+            const s = Game.nodes[Math.floor(Math.random() * Game.nodes.length)];
+            const d = Game.nodes[Math.floor(Math.random() * Game.nodes.length)];
+            if (s.id === d.id) continue;
+            const dist = Math.hypot(s.x - d.x, s.y - d.y);
+            if (dist > 680) continue;
+
+            COMM_KEYS.forEach(c => {
+                if (s.stock[c] < 35) return;
+                const spread = d.prices[c] - s.prices[c];
+                const estProfit = (spread * 25) - (dist * 0.4);
+                const score = estProfit / (dist / 200 + 0.5);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestDeal = { sId: s.id, dId: d.id, c };
+                }
+            });
+        }
+
+        if (bestDeal) {
+            createTradeRoute(bot.id, bestDeal.sId, bestDeal.dId, bestDeal.c);
+        }
+    }
+
+    // -------------------- 7. REAL-TIME SIMULATION LOOP --------------------
+    function updateSimulation(dt) {
+        if (Game.speed === 0) return;
+        const simDeltaDays = (dt * Game.speed) / 3.2; // 1 day = ~3.2 sec at 1x
+
+        Game.dayProgress += simDeltaDays;
+        if (Game.dayProgress >= 1) {
+            Game.dayProgress -= 1;
+            simulateDayTick();
+        }
+
+        // Move Convoys smoothly along their graph paths
+        Game.routes.forEach(route => {
+            const step = (route.speed * simDeltaDays) / Math.max(1, route.totalDist);
+            route.progress += step * route.dir;
+
+            if (route.dir === 1 && route.progress >= 1) {
+                route.progress = 1;
+                unloadConvoyAtDest(route);
+                route.dir = -1;
+            } else if (route.dir === -1 && route.progress <= 0) {
+                route.progress = 0;
+                loadConvoyAtSource(route);
+                route.dir = 1;
+            }
+        });
+
+        // Update floating profit popups
+        for (let i = Game.floatingTexts.length - 1; i >= 0; i--) {
+            const ft = Game.floatingTexts[i];
+            ft.y -= dt * 26;
+            ft.life -= dt;
+            if (ft.life <= 0) Game.floatingTexts.splice(i, 1);
+        }
+
+        // Periodic live HUD cash update
+        Game.uiRefreshTimer += dt;
+        if (Game.uiRefreshTimer > 0.25) {
+            Game.uiRefreshTimer = 0;
+            updateHUD();
+        }
+    }
+
+    function spawnFloatingText(x, y, text, color) {
+        Game.floatingTexts.push({ x, y, text, color, life: 1.8, maxLife: 1.8 });
+    }
+
+    // -------------------- 8. CANVAS RENDERER & CAMERA (PAN + ZOOM + TOUCH) --------------------
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const Camera = {
+        x: 0,
+        y: 0,
+        zoom: 0.78,
+        targetZoom: 0.78,
+        minZoom: 0.36,
+        maxZoom: 2.1,
+        isDragging: false,
+        dragMoved: false,
+        lastX: 0,
+        lastY: 0,
+        pinchDist: 0,
+        hoveredNodeId: null
+    };
+
+    function resizeCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        // Adapt initial zoom slightly for smaller mobile screens
+        if (window.innerWidth < 640 && Camera.zoom > 0.55 && Game.day === 1) {
+            Camera.zoom = 0.48;
+            Camera.targetZoom = 0.48;
+        }
+    }
+
+    function screenToWorld(sx, sy) {
+        return {
+            x: (sx - window.innerWidth / 2) / Camera.zoom + Camera.x,
+            y: (sy - window.innerHeight / 2) / Camera.zoom + Camera.y
+        };
+    }
+
+    function getConvoyWorldPos(route) {
+        const targetDist = route.progress * route.totalDist;
+        let accum = 0;
+        for (let i = 0; i < route.path.length - 1; i++) {
+            const a = Game.nodes[route.path[i]];
+            const b = Game.nodes[route.path[i + 1]];
+            const segLen = Math.hypot(b.x - a.x, b.y - a.y);
+            if (accum + segLen >= targetDist || i === route.path.length - 2) {
+                const t = segLen > 0 ? Math.max(0, Math.min(1, (targetDist - accum) / segLen)) : 0;
+                return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+            }
+            accum += segLen;
+        }
+        const n = Game.nodes[route.sourceId];
+        return { x: n.x, y: n.y };
+    }
+
+    function drawFrame() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+
+        // Smooth zoom interpolation
+        Camera.zoom += (Camera.targetZoom - Camera.zoom) * 0.16;
+
+        // Deep Space Tactical Background
+        ctx.fillStyle = '#060a12';
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.save();
+        ctx.translate(w / 2, h / 2);
+        ctx.scale(Camera.zoom, Camera.zoom);
+        ctx.translate(-Camera.x, -Camera.y);
+
+        // 1. Subtle Tactical Grid
+        drawTacticalGrid(w, h);
+
+        // 2. Base Road & Sea Edges
+        Game.edges.forEach(e => {
+            const a = Game.nodes[e.a], b = Game.nodes[e.b];
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            if (e.isSea) {
+                ctx.setLineDash([8, 8]);
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.28)';
+                ctx.lineWidth = 2.5;
+            } else {
+                ctx.setLineDash([]);
+                ctx.strokeStyle = 'rgba(71, 85, 105, 0.38)';
+                ctx.lineWidth = 2;
+            }
+            ctx.stroke();
+        });
+        ctx.setLineDash([]);
+
+        // 3. Active Player & Bot Route Highlights
+        Game.routes.forEach(r => {
+            const actor = getActor(r.ownerId);
+            const isPlayer = r.ownerId === 'player';
+            ctx.beginPath();
+            r.path.forEach((nid, idx) => {
+                const n = Game.nodes[nid];
+                if (idx === 0) ctx.moveTo(n.x, n.y);
+                else ctx.lineTo(n.x, n.y);
+            });
+            ctx.strokeStyle = isPlayer ? 'rgba(34, 211, 238, 0.50)' : `${actor.color}28`;
+            ctx.lineWidth = isPlayer ? 3.5 : 1.8;
+            ctx.stroke();
+        });
+
+        // If user is selecting destination for a new route, draw dashed guide line
+        if (Game.routeCreationSourceId !== null && Camera.hoveredNodeId !== null && Camera.hoveredNodeId !== Game.routeCreationSourceId) {
+            const previewPath = findShortestPath(Game.routeCreationSourceId, Camera.hoveredNodeId);
+            ctx.beginPath();
+            previewPath.forEach((nid, idx) => {
+                const n = Game.nodes[nid];
+                if (idx === 0) ctx.moveTo(n.x, n.y);
+                else ctx.lineTo(n.x, n.y);
+            });
+            ctx.setLineDash([10, 6]);
+            ctx.strokeStyle = '#22d3ee';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // 4. Moving Convoys (Trucks / Ships)
+        Game.routes.forEach(r => {
+            const pos = getConvoyWorldPos(r);
+            const actor = getActor(r.ownerId);
+            const isPlayer = r.ownerId === 'player';
+
+            // Outer glow
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, isPlayer ? 7.5 : 5, 0, Math.PI * 2);
+            ctx.fillStyle = isPlayer ? 'rgba(34, 211, 238, 0.32)' : `${actor.color}33`;
+            ctx.fill();
+
+            // Core dot
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, isPlayer ? 4.2 : 3, 0, Math.PI * 2);
+            ctx.fillStyle = r.dir === 1 ? actor.color : '#94a3b8';
+            ctx.fill();
+
+            // Show commodity emoji when zoomed in on player routes
+            if (isPlayer && Camera.zoom > 0.72 && r.dir === 1) {
+                ctx.font = '11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(COMMODITIES[r.commId].icon, pos.x, pos.y - 9);
+            }
+        });
+
+        // 5. World Nodes (Cities, Ports, Resource Hubs)
+        Game.nodes.forEach(node => {
+            drawNode(node);
+        });
+
+        // 6. Floating Profit / Event Popups
+        Game.floatingTexts.forEach(ft => {
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, ft.life / ft.maxLife);
+            ctx.font = 'bold 14px "JetBrains Mono", "Cairo", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#060a12';
+            ctx.fillText(ft.text, ft.x + 1, ft.y + 1);
+            ctx.fillStyle = ft.color;
+            ctx.fillText(ft.text, ft.x, ft.y);
+            ctx.restore();
+        });
+
+        ctx.restore();
+    }
+
+    function drawTacticalGrid(w, h) {
+        const step = 120;
+        const left = Camera.x - (w / 2) / Camera.zoom - step;
+        const right = Camera.x + (w / 2) / Camera.zoom + step;
+        const top = Camera.y - (h / 2) / Camera.zoom - step;
+        const bottom = Camera.y + (h / 2) / Camera.zoom + step;
+
+        const startX = Math.floor(left / step) * step;
+        const startY = Math.floor(top / step) * step;
+
+        ctx.strokeStyle = 'rgba(30, 41, 59, 0.36)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let x = startX; x < right; x += step) {
+            ctx.moveTo(x, top);
+            ctx.lineTo(x, bottom);
+        }
+        for (let y = startY; y < bottom; y += step) {
+            ctx.moveTo(left, y);
+            ctx.lineTo(right, y);
+        }
+        ctx.stroke();
+    }
+
+    function drawNode(node) {
+        const isSelected = Game.selectedNodeId === node.id;
+        const isHovered = Camera.hoveredNodeId === node.id;
+        const isRouteSrc = Game.routeCreationSourceId === node.id;
+        const radius = node.type === 'city' ? 22 : (node.type === 'port' ? 19 : 17);
+
+        // Price Heatmap Aura
+        if (Game.heatmap !== 'none') {
+            const c = Game.heatmap;
+            const ratio = node.prices[c] / COMMODITIES[c].basePrice;
+            // Low price = Green (Buy!), High price = Red (Sell!)
+            let heatColor = 'rgba(245, 158, 11, 0.25)';
+            if (ratio < 0.85) heatColor = 'rgba(16, 185, 129, 0.42)';
+            else if (ratio > 1.25) heatColor = 'rgba(244, 63, 94, 0.45)';
+
+            const grad = ctx.createRadialGradient(node.x, node.y, radius * 0.6, node.x, node.y, radius * 3.1);
+            grad.addColorStop(0, heatColor);
+            grad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, radius * 3.1, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Selection / Hover Ring
+        if (isSelected || isHovered || isRouteSrc) {
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, radius + 7, 0, Math.PI * 2);
+            ctx.strokeStyle = isRouteSrc ? '#10b981' : (isSelected ? '#22d3ee' : 'rgba(255,255,255,0.45)');
+            ctx.lineWidth = isSelected || isRouteSrc ? 3 : 2;
+            ctx.stroke();
+        }
+
+        // Node Shape by Type (Circle=City, Diamond=Port, Hexagon/Square=Resource)
+        ctx.fillStyle = '#0f172a';
+        ctx.strokeStyle = node.type === 'city' ? '#38bdf8' : (node.type === 'port' ? '#10b981' : '#f59e0b');
+        if (node.portOwnerId) {
+            ctx.strokeStyle = getActor(node.portOwnerId).color;
+        }
+        ctx.lineWidth = 2.6;
+
+        ctx.beginPath();
+        if (node.type === 'city') {
+            ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
+        } else if (node.type === 'port') {
+            ctx.moveTo(node.x, node.y - radius);
+            ctx.lineTo(node.x + radius, node.y);
+            ctx.lineTo(node.x, node.y + radius);
+            ctx.lineTo(node.x - radius, node.y);
+            ctx.closePath();
+        } else {
+            for (let i = 0; i < 6; i++) {
+                const ang = (Math.PI / 3) * i - Math.PI / 6;
+                const px = node.x + radius * Math.cos(ang);
+                const py = node.y + radius * Math.sin(ang);
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+        }
+        ctx.fill();
+        ctx.stroke();
+
+        // Node Center Icon
+        const icons = { city: '🏙️', port: '⚓', oil: '🛢️', iron: '⛏️', wheat: '🌾', silicon: '💎' };
+        ctx.font = `${node.type === 'city' ? 16 : 14}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(icons[node.type] || '📍', node.x, node.y + 1);
+
+        // Owned Facility Indicator Dots around bottom-right of node
+        const facsHere = Game.facilities.filter(f => f.nodeId === node.id);
+        facsHere.forEach((f, i) => {
+            const owner = getActor(f.ownerId);
+            const fx = node.x - ((facsHere.length - 1) * 7) + i * 14;
+            const fy = node.y - radius - 9;
+            ctx.beginPath();
+            ctx.arc(fx, fy, 4.5, 0, Math.PI * 2);
+            ctx.fillStyle = owner.color;
+            ctx.fill();
+            ctx.strokeStyle = '#060a12';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        });
+
+        // Node Name Label
+        ctx.font = 'bold 12px "Cairo", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = 'rgba(6, 10, 18, 0.85)';
+        const labelY = node.y + radius + 5;
+        const textW = ctx.measureText(node.name).width + 10;
+        ctx.beginPath();
+        ctx.roundRect(node.x - textW / 2, labelY - 1, textW, 18, 5);
+        ctx.fill();
+        ctx.fillStyle = isSelected ? '#67e8f9' : '#e2e8f0';
+        ctx.fillText(node.name, node.x, labelY + 1);
+
+        // Heatmap Price Tag Pill directly on map
+        if (Game.heatmap !== 'none') {
+            const c = Game.heatmap;
+            const p = node.prices[c];
+            const ratio = p / COMMODITIES[c].basePrice;
+            const tagCol = ratio < 0.85 ? '#10b981' : (ratio > 1.25 ? '#f43f5e' : '#f59e0b');
+            const priceStr = `$${p}`;
+            ctx.font = 'bold 12px "JetBrains Mono", monospace';
+            const pw = ctx.measureText(priceStr).width + 12;
+            ctx.fillStyle = '#0f172a';
+            ctx.strokeStyle = tagCol;
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.roundRect(node.x - pw / 2, labelY + 20, pw, 18, 6);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = tagCol;
+            ctx.fillText(priceStr, node.x, labelY + 22);
+        }
+    }
+
+    // -------------------- 9. INPUT HANDLING (MOUSE + TOUCH) --------------------
+    function findNodeAtScreen(sx, sy) {
+        const pt = screenToWorld(sx, sy);
+        const hitRadius = 30 / Math.min(1, Camera.zoom);
+        for (let i = Game.nodes.length - 1; i >= 0; i--) {
+            const n = Game.nodes[i];
+            if (Math.hypot(pt.x - n.x, pt.y - n.y) <= Math.max(26, hitRadius * 0.75)) {
+                return n;
+            }
+        }
+        return null;
+    }
+
+    function handleNodeTap(node) {
+        if (!node) {
+            if (Game.routeCreationSourceId === null) closeNodeInspector();
+            return;
+        }
+        SoundFX.click();
+
+        // If we are in "Pick Destination for Route" mode
+        if (Game.routeCreationSourceId !== null) {
+            if (node.id === Game.routeCreationSourceId) {
+                addNews('⚠️ اختر مدينة مختلفة كوجهة للشحن.', 'amber');
+                return;
+            }
+            openRouteModal(Game.routeCreationSourceId, node.id);
+            cancelRouteCreationMode();
+            return;
+        }
+
+        // Otherwise open node inspector
+        Game.selectedNodeId = node.id;
+        document.getElementById('nodeInspector').classList.remove('hidden');
+        renderInspector();
+    }
+
+    // Mouse Events
+    canvas.addEventListener('mousedown', e => {
+        Camera.isDragging = true;
+        Camera.dragMoved = false;
+        Camera.lastX = e.clientX;
+        Camera.lastY = e.clientY;
+    });
+
+    window.addEventListener('mousemove', e => {
+        if (Camera.isDragging) {
+            const dx = e.clientX - Camera.lastX;
+            const dy = e.clientY - Camera.lastY;
+            if (Math.abs(dx) > 4 || Math.abs(dy) > 4) Camera.dragMoved = true;
+            Camera.x -= dx / Camera.zoom;
+            Camera.y -= dy / Camera.zoom;
+            Camera.lastX = e.clientX;
+            Camera.lastY = e.clientY;
+        } else {
+            const hovered = findNodeAtScreen(e.clientX, e.clientY);
+            Camera.hoveredNodeId = hovered ? hovered.id : null;
+            canvas.style.cursor = hovered ? 'pointer' : 'grab';
+        }
+    });
+
+    window.addEventListener('mouseup', e => {
+        if (Camera.isDragging && !Camera.dragMoved && e.target === canvas) {
+            handleNodeTap(findNodeAtScreen(e.clientX, e.clientY));
+        }
+        Camera.isDragging = false;
+    });
+
+    canvas.addEventListener('wheel', e => {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.14 : 0.87;
+        Camera.targetZoom = Math.max(Camera.minZoom, Math.min(Camera.maxZoom, Camera.targetZoom * factor));
+    }, { passive: false });
+
+    // Touch Events (Drag + Pinch Zoom + Tap)
+    canvas.addEventListener('touchstart', e => {
+        if (e.touches.length === 1) {
+            Camera.isDragging = true;
+            Camera.dragMoved = false;
+            Camera.lastX = e.touches[0].clientX;
+            Camera.lastY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+            Camera.isDragging = false;
+            Camera.pinchDist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+        }
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', e => {
+        e.preventDefault();
+        if (e.touches.length === 1 && Camera.isDragging) {
+            const dx = e.touches[0].clientX - Camera.lastX;
+            const dy = e.touches[0].clientY - Camera.lastY;
+            if (Math.abs(dx) > 5 || Math.abs(dy) > 5) Camera.dragMoved = true;
+            Camera.x -= dx / Camera.zoom;
+            Camera.y -= dy / Camera.zoom;
+            Camera.lastX = e.touches[0].clientX;
+            Camera.lastY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+            const d = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            if (Camera.pinchDist > 0) {
+                const factor = d / Camera.pinchDist;
+                Camera.targetZoom = Math.max(Camera.minZoom, Math.min(Camera.maxZoom, Camera.targetZoom * factor));
+            }
+            Camera.pinchDist = d;
+        }
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', e => {
+        if (Camera.isDragging && !Camera.dragMoved && e.changedTouches.length === 1) {
+            const t = e.changedTouches[0];
+            handleNodeTap(findNodeAtScreen(t.clientX, t.clientY));
+        }
+        Camera.isDragging = false;
+        Camera.pinchDist = 0;
+    });
+
+    // -------------------- 10. UI & INSPECTOR RENDERING --------------------
+    function updateHUD() {
+        const player = getActor('player');
+        document.getElementById('hudCash').textContent = `$${Math.round(player.cash).toLocaleString()}`;
+        document.getElementById('hudNetWorth').textContent = `$${Math.round(player.netWorth).toLocaleString()}`;
+        document.getElementById('hudDay').textContent = Game.day;
+
+        const dpEl = document.getElementById('hudDailyProfit');
+        const dp = player.dailyProfit;
+        dpEl.textContent = `${dp >= 0 ? '+' : ''}$${dp.toLocaleString()}`;
+        dpEl.className = `font-mono-num font-bold text-sm ${dp >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
+        const myRouteCount = Game.routes.filter(r => r.ownerId === 'player').length;
+        document.getElementById('badgeRoutes').textContent = myRouteCount;
+    }
+
+    function updateMissions() {
+        const player = getActor('player');
+        const sortedActors = [...Game.actors].sort((a, b) => b.netWorth - a.netWorth);
+
+        if (Game.routes.some(r => r.ownerId === 'player')) Game.missions[0].done = true;
+        if (Game.facilities.some(f => f.ownerId === 'player')) Game.missions[1].done = true;
+        if (player.netWorth >= 75000) Game.missions[2].done = true;
+        if (sortedActors[0].id === 'player' && Game.day >= 3) Game.missions[3].done = true;
+
+        const list = document.getElementById('missionList');
+        list.innerHTML = Game.missions.map(m => `
+            <li class="flex items-center gap-2 ${m.done ? 'text-emerald-400 line-through opacity-75' : 'text-slate-200'}">
+                <span>${m.done ? '✅' : '⬜'}</span>
+                <span>${m.text}</span>
+            </li>
+        `).join('');
+    }
+
+    function addNews(msg, tone = 'cyan') {
+        const colors = {
+            cyan: 'border-cyan-500/50 text-cyan-100',
+            emerald: 'border-emerald-500/50 text-emerald-100',
+            amber: 'border-amber-500/50 text-amber-100',
+            rose: 'border-rose-500/50 text-rose-100',
+            slate: 'border-slate-600/60 text-slate-300'
+        };
+        const container = document.getElementById('toastContainer');
+        const el = document.createElement('div');
+        el.className = `toast-anim glass-panel rounded-xl px-3 py-2 text-[11px] leading-snug border-r-4 ${colors[tone] || colors.cyan}`;
+        el.textContent = msg;
+        container.appendChild(el);
+        while (container.children.length > 4) container.removeChild(container.firstChild);
+        setTimeout(() => {
+            el.style.opacity = '0';
+            el.style.transition = 'opacity 0.4s';
+            setTimeout(() => el.remove(), 400);
+        }, 6200);
+    }
+
+    function closeNodeInspector() {
+        Game.selectedNodeId = null;
+        document.getElementById('nodeInspector').classList.add('hidden');
+    }
+
+    function switchInspTab(tab) {
+        Game.inspTab = tab;
+        ['market', 'build', 'routes'].forEach(t => {
+            const btn = document.getElementById('inspTab' + t.charAt(0).toUpperCase() + t.slice(1));
+            if (t === tab) {
+                btn.className = 'py-2.5 text-cyan-300 border-b-2 border-cyan-400';
+            } else {
+                btn.className = 'py-2.5 text-slate-400 hover:text-slate-200';
+            }
+        });
+        renderInspector();
+    }
+
+    function renderInspector() {
+        const node = Game.nodes[Game.selectedNodeId];
+        if (!node) return;
+
+        const icons = { city: '🏙️', port: '⚓', oil: '🛢️', iron: '⛏️', wheat: '🌾', silicon: '💎' };
+        const labels = { city: 'مدينة استهلاكية', port: 'ميناء عبور استراتيجي', oil: 'حقل نفط', iron: 'منجم حديد', wheat: 'منطقة زراعية', silicon: 'منجم سيليكون' };
+
+        document.getElementById('inspIcon').textContent = icons[node.type];
+        document.getElementById('inspName').textContent = node.name;
+        document.getElementById('inspBadge').textContent = labels[node.type];
+
+        let subText = `السكان: ${node.pop}K`;
+        if (node.type === 'port') {
+            const owner = node.portOwnerId ? getActor(node.portOwnerId).name : 'حر (بدون رسوم)';
+            subText += ` • مالك الامتياز: ${owner}`;
+        }
+        document.getElementById('inspSub').textContent = subText;
+
+        const body = document.getElementById('inspContent');
+
+        if (Game.inspTab === 'market') {
+            // Action Button to start a route from here
+            let html = `
+                <button onclick="startRouteCreationMode(${node.id})" class="btn-tactical w-full py-2.5 px-3 rounded-xl bg-gradient-to-l from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20">
+                    <span>🚛</span><span>إنشاء خط شحن تجاري ينطلق من هنا</span>
+                </button>
+                <div class="text-[11px] text-slate-400 flex justify-between px-1 pt-1">
+                    <span>السلعة</span>
+                    <span>المخزون / السعر المحلي</span>
+                </div>
+                <div class="space-y-1.5">
+            `;
+
+            COMM_KEYS.forEach(c => {
+                const def = COMMODITIES[c];
+                const price = node.prices[c];
+                const stock = Math.round(node.stock[c]);
+                const ratio = price / def.basePrice;
+                const priceCol = ratio < 0.85 ? 'text-emerald-400' : (ratio > 1.25 ? 'text-rose-400' : 'text-amber-300');
+                const tag = ratio < 0.85 ? 'رخيص للشراء' : (ratio > 1.25 ? 'مربح للبيع' : 'متوازن');
+                const spark = renderSparklineSVG(node.priceHistory[c], ratio < 0.85 ? '#10b981' : (ratio > 1.25 ? '#f43f5e' : '#38bdf8'));
+
+                html += `
+                    <div class="bg-slate-900/75 border border-slate-800 rounded-xl p-2.5 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg">${def.icon}</span>
+                            <div>
+                                <div class="text-xs font-bold text-slate-100">${def.name}</div>
+                                <div class="text-[10px] ${priceCol}">${tag}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            ${spark}
+                            <div class="text-left min-w-[64px]">
+                                <div class="font-mono-num font-bold text-sm ${priceCol}">$${price}</div>
+                                <div class="text-[10px] text-slate-400 font-mono-num">${stock} u</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            body.innerHTML = html;
+        }
+        else if (Game.inspTab === 'build') {
+            const facsHere = Game.facilities.filter(f => f.nodeId === node.id);
+            const player = getActor('player');
+            let html = `<div class="text-xs text-slate-400">المنشآت الحالية في ${node.name} (${facsHere.length} / ${node.maxSlots}):</div>`;
+
+            if (facsHere.length === 0) {
+                html += `<div class="bg-slate-900/50 border border-dashed border-slate-700 rounded-xl p-3 text-center text-xs text-slate-500">لا توجد منشآت مبنية هنا بعد.</div>`;
+            } else {
+                facsHere.forEach(f => {
+                    const def = FACILITY_TYPES[f.type];
+                    const owner = getActor(f.ownerId);
+                    const isMine = f.ownerId === 'player';
+                    html += `
+                        <div class="bg-slate-900/80 border rounded-xl p-3 flex items-center justify-between" style="border-color: ${owner.color}55">
+                            <div>
+                                <div class="text-xs font-bold text-white flex items-center gap-1.5">
+                                    <span>${def.icon}</span><span>${def.name}</span>
+                                </div>
+                                <div class="text-[10px] mt-0.5" style="color:${owner.color}">المالك: ${owner.name}</div>
+                                ${isMine && !def.tollRate ? `<div class="text-[10px] text-slate-300 mt-0.5">صافي اليوم: <span class="font-mono-num font-bold ${f.lastProfit>=0?'text-emerald-400':'text-rose-400'}">${f.lastProfit>=0?'+':''}$${f.lastProfit}</span></div>` : ''}
+                            </div>
+                            ${isMine ? `<button onclick="sellFacility(${f.id}); renderInspector(); updateHUD();" class="btn-tactical px-2.5 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 border border-rose-500/40 text-rose-300 text-[11px] font-bold">بيع (65%)</button>` : ''}
+                        </div>
+                    `;
+                });
+            }
+
+            // Available options to build
+            if (facsHere.length < node.maxSlots) {
+                html += `<div class="text-xs font-bold text-cyan-300 pt-2">استثمارات متاحة للبناء هنا:</div><div class="space-y-2">`;
+                Object.entries(FACILITY_TYPES).forEach(([key, def]) => {
+                    if (def.nodeType !== node.type) return;
+                    const canAfford = player.cash >= def.cost;
+                    let desc = '';
+                    if (def.input && def.output) {
+                        const est = Math.round((node.prices[def.output] * def.outRate) - (node.prices[def.input] * def.inRate) - def.upkeep);
+                        desc = `يحوّل ${COMMODITIES[def.input].name} ← ${COMMODITIES[def.output].name} • ربح تقديري: <b class="${est>=0?'text-emerald-400':'text-rose-400'} font-mono-num">${est>=0?'+':''}$${est}/يوم</b>`;
+                    } else if (def.output) {
+                        const est = Math.round(def.rate * node.prices[def.output] * 0.72 - def.upkeep);
+                        desc = `يستخرج ${def.rate} ${COMMODITIES[def.output].name}/يوم • ربح تقديري: <b class="text-emerald-400 font-mono-num">+$${est}/يوم</b>`;
+                    } else if (def.tollRate) {
+                        desc = `يفرض ضريبة عبور 6% لصالحك على كل شاحنة بوت تمر بهذا الميناء!`;
+                    }
+
+                    html += `
+                        <div class="bg-slate-900/80 border border-slate-700/70 rounded-xl p-3 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <div class="font-bold text-xs text-white flex items-center gap-1.5"><span>${def.icon}</span><span>${def.name}</span></div>
+                                <div class="font-mono-num font-bold text-xs text-cyan-300">$${def.cost.toLocaleString()}</div>
+                            </div>
+                            <div class="text-[11px] text-slate-300">${desc}</div>
+                            <button onclick="if(buyFacility('player', ${node.id}, '${key}')){ renderInspector(); updateHUD(); }"
+                                ${canAfford ? '' : 'disabled'}
+                                class="btn-tactical w-full py-2 rounded-lg text-xs font-extrabold ${canAfford ? 'bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-300 border border-emerald-400/50' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}">
+                                ${canAfford ? 'شراء وبناء الآن' : 'السيولة غير كافية'}
+                            </button>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+
+            body.innerHTML = html;
+        }
+        else if (Game.inspTab === 'routes') {
+            const connected = Game.routes.filter(r => r.sourceId === node.id || r.destId === node.id);
+            let html = `
+                <button onclick="startRouteCreationMode(${node.id})" class="btn-tactical w-full py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/50 text-cyan-200 font-bold text-xs">
+                    + تأسيس خط شحن جديد من ${node.name}
+                </button>
+            `;
+            if (connected.length === 0) {
+                html += `<div class="text-center text-xs text-slate-500 py-6">لا توجد خطوط شحن مرتبطة بهذه العقدة حالياً.</div>`;
+            } else {
+                connected.forEach(r => {
+                    const owner = getActor(r.ownerId);
+                    const s = Game.nodes[r.sourceId], d = Game.nodes[r.destId];
+                    const comm = COMMODITIES[r.commId];
+                    const isMine = r.ownerId === 'player';
+                    html += `
+                        <div class="bg-slate-900/80 border rounded-xl p-2.5 text-xs space-y-1.5" style="border-color:${owner.color}55">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-white">${comm.icon} ${s.name} ← ${d.name}</span>
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${owner.color}25; color:${owner.color}">${owner.name}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-[11px] text-slate-400">
+                                <span>السعة: ${r.capacity} (مستوى ${r.level})</span>
+                                <span>آخر رحلة: <b class="font-mono-num ${r.lastTripProfit>=0?'text-emerald-400':'text-rose-400'}">${r.lastTripProfit>=0?'+':''}$${r.lastTripProfit}</b></span>
+                            </div>
+                            ${isMine ? `
+                            <div class="flex gap-1.5 pt-1">
+                                ${r.level < 4 ? `<button onclick="upgradeRoute(${r.id}); renderInspector();" class="btn-tactical flex-1 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 text-cyan-300 border border-cyan-400/40 text-[10px] font-bold">ترقية ($${(3000*r.level).toLocaleString()})</button>` : ''}
+                                <button onclick="deleteRoute(${r.id}); renderInspector(); updateHUD();" class="btn-tactical px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 text-rose-300 border border-rose-500/40 text-[10px] font-bold">حذف</button>
+                            </div>` : ''}
+                        </div>
+                    `;
+                });
+            }
+            body.innerHTML = html;
+        }
+    }
+
+    function renderSparklineSVG(data, color) {
+        if (!data || data.length < 2) return '';
+        const w = 52, h = 22;
+        const min = Math.min(...data), max = Math.max(...data);
+        const range = Math.max(1, max - min);
+        const pts = data.map((v, i) => {
+            const x = (i / (data.length - 1)) * w;
+            const y = h - ((v - min) / range) * (h - 4) - 2;
+            return `${x.toFixed(1)},${y.toFixed(1)}`;
+        }).join(' ');
+        return `<svg width="${w}" height="${h}" class="overflow-visible"><polyline fill="none" stroke="${color}" stroke-width="1.8" points="${pts}"/></svg>`;
+    }
+
+    // -------------------- 11. ROUTE CREATION FLOW --------------------
+    function startRouteCreationMode(sourceId) {
+        Game.routeCreationSourceId = sourceId;
+        closeNodeInspector();
+        const src = Game.nodes[sourceId];
+        document.getElementById('routeModeText').textContent = `اختر المدينة الوجهة للشحن من (${src.name}) على الخريطة...`;
+        document.getElementById('routeModeBanner').classList.remove('hidden');
+    }
+
+    function cancelRouteCreationMode() {
+        Game.routeCreationSourceId = null;
+        document.getElementById('routeModeBanner').classList.add('hidden');
+    }
+
+    function openRouteModal(sourceId, destId) {
+        const s = Game.nodes[sourceId], d = Game.nodes[destId];
+        const path = findShortestPath(sourceId, destId);
+        const dist = getPathDistance(path);
+
+        document.getElementById('rmSourceName').textContent = s.name;
+        document.getElementById('rmDestName').textContent = d.name;
+
+        // Calculate estimated profit per commodity and sort best first
+        const options = COMM_KEYS.map(c => {
+            const buyP = s.prices[c], sellP = d.prices[c];
+            const est = Math.round(((sellP - buyP) * 25) - (dist * 0.35));
+            return { c, buyP, sellP, est };
+        }).sort((a, b) => b.est - a.est);
+
+        Game.pendingRoute = { sourceId, destId, commId: options[0].c };
+
+        const list = document.getElementById('rmCommodityList');
+        list.innerHTML = options.map((opt, idx) => {
+            const def = COMMODITIES[opt.c];
+            const isSelected = idx === 0;
+            const profCol = opt.est >= 0 ? 'text-emerald-400' : 'text-rose-400';
+            return `
+                <button type="button" onclick="selectPendingCommodity('${opt.c}', this)"
+                    class="rm-comm-btn w-full text-right p-2.5 rounded-xl border flex items-center justify-between transition ${isSelected ? 'bg-cyan-500/20 border-cyan-400' : 'bg-slate-900/70 border-slate-700/70 hover:border-slate-500'}">
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg">${def.icon}</span>
+                        <div>
+                            <div class="text-xs font-bold text-white">${def.name}</div>
+                            <div class="text-[10px] text-slate-400 font-mono-num">شراء $${opt.buyP} ← بيع $${opt.sellP}</div>
+                        </div>
+                    </div>
+                    <div class="text-left">
+                        <div class="text-[10px] text-slate-400">ربح الرحلة</div>
+                        <div class="font-mono-num font-bold text-xs ${profCol}">${opt.est >= 0 ? '+' : ''}$${opt.est.toLocaleString()}</div>
+                    </div>
+                </button>
+            `;
+        }).join('');
+
+        document.getElementById('routeModal').classList.remove('hidden');
+    }
+
+    function selectPendingCommodity(commId, btnEl) {
+        if (Game.pendingRoute) Game.pendingRoute.commId = commId;
+        document.querySelectorAll('.rm-comm-btn').forEach(b => {
+            b.className = 'rm-comm-btn w-full text-right p-2.5 rounded-xl border flex items-center justify-between transition bg-slate-900/70 border-slate-700/70 hover:border-slate-500';
+        });
+        btnEl.className = 'rm-comm-btn w-full text-right p-2.5 rounded-xl border flex items-center justify-between transition bg-cyan-500/20 border-cyan-400';
+        SoundFX.click();
+    }
+
+    function closeRouteModal() {
+        Game.pendingRoute = null;
+        document.getElementById('routeModal').classList.add('hidden');
+    }
+
+    document.getElementById('btnConfirmRoute').addEventListener('click', () => {
+        if (!Game.pendingRoute) return;
+        const { sourceId, destId, commId } = Game.pendingRoute;
+        const ok = createTradeRoute('player', sourceId, destId, commId);
+        if (!ok) {
+            SoundFX.alert();
+            addNews('⚠️ تحتاج إلى $3,500 نقداً لإطلاق خط شحن جديد.', 'rose');
+            return;
+        }
+        closeRouteModal();
+        updateHUD();
+        if (Game.activeSidePanel === 'empire') renderSidePanel();
+    });
+
+    // -------------------- 12. LEFT SIDE PANELS (EMPIRE / RIVALS / GLOBAL MARKET) --------------------
+    function toggleSidePanel(panelName) {
+        SoundFX.click();
+        if (Game.activeSidePanel === panelName) {
+            closeSidePanel();
+            return;
+        }
+        Game.activeSidePanel = panelName;
+        document.getElementById('sidePanel').classList.remove('hidden');
+        renderSidePanel();
+    }
+
+    function closeSidePanel() {
+        Game.activeSidePanel = null;
+        document.getElementById('sidePanel').classList.add('hidden');
+    }
+
+    function renderSidePanel() {
+        const titleEl = document.getElementById('sidePanelTitle');
+        const body = document.getElementById('sidePanelBody');
+
+        if (Game.activeSidePanel === 'empire') {
+            titleEl.textContent = '🚛 إمبراطوريتي وخطوط الشحن';
+            const myRoutes = Game.routes.filter(r => r.ownerId === 'player');
+            const myFacs = Game.facilities.filter(f => f.ownerId === 'player');
+            const player = getActor('player');
+
+            let html = `
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="bg-slate-900/80 rounded-xl p-2 border border-slate-800">
+                        <div class="text-[10px] text-slate-400">خطوط الشحن</div>
+                        <div class="font-mono-num font-bold text-base text-cyan-300">${myRoutes.length}</div>
+                    </div>
+                    <div class="bg-slate-900/80 rounded-xl p-2 border border-slate-800">
+                        <div class="text-[10px] text-slate-400">المنشآت</div>
+                        <div class="font-mono-num font-bold text-base text-emerald-300">${myFacs.length}</div>
+                    </div>
+                    <div class="bg-slate-900/80 rounded-xl p-2 border border-slate-800">
+                        <div class="text-[10px] text-slate-400">رسوم الموانئ</div>
+                        <div class="font-mono-num font-bold text-sm text-amber-300">$${player.totalTolls.toLocaleString()}</div>
+                    </div>
+                </div>
+            `;
+
+            html += `<div class="text-xs font-bold text-cyan-300 pt-1">أسطول الشحن النشط:</div>`;
+            if (myRoutes.length === 0) {
+                html += `<div class="bg-slate-900/50 border border-dashed border-slate-700 rounded-xl p-4 text-center text-xs text-slate-400">اضغط على أي مدينة خضراء على الخريطة لبدء أول خط شحن تجاري!</div>`;
+            } else {
+                myRoutes.forEach(r => {
+                    const s = Game.nodes[r.sourceId], d = Game.nodes[r.destId], c = COMMODITIES[r.commId];
+                    html += `
+                        <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-2.5 text-xs space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-white">${c.icon} ${s.name} ← ${d.name}</span>
+                                <span class="font-mono-num font-bold ${r.lastTripProfit>=0?'text-emerald-400':'text-rose-400'}">${r.lastTripProfit>=0?'+':''}$${r.lastTripProfit}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-[10px] text-slate-400">
+                                <span>مستوى ${r.level} (سعة ${r.capacity}) • ${r.trips} رحلة</span>
+                                <span>إجمالي الربح: <b class="font-mono-num text-slate-200">$${r.totalProfit.toLocaleString()}</b></span>
+                            </div>
+                            <div class="flex gap-1.5">
+                                ${r.level < 4 ? `<button onclick="upgradeRoute(${r.id}); renderSidePanel(); updateHUD();" class="btn-tactical flex-1 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 text-cyan-300 border border-cyan-400/40 text-[10px] font-bold">ترقية ($${(3000*r.level).toLocaleString()})</button>` : ''}
+                                <button onclick="focusNode(${r.sourceId})" class="btn-tactical px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]">موقع</button>
+                                <button onclick="deleteRoute(${r.id}); renderSidePanel(); updateHUD();" class="btn-tactical px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 text-rose-300 text-[10px]">حذف</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            if (myFacs.length > 0) {
+                html += `<div class="text-xs font-bold text-emerald-300 pt-2">منشآتي المملوكة:</div>`;
+                myFacs.forEach(f => {
+                    const def = FACILITY_TYPES[f.type];
+                    const n = Game.nodes[f.nodeId];
+                    html += `
+                        <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-2.5 flex items-center justify-between text-xs">
+                            <div>
+                                <div class="font-bold text-white">${def.icon} ${def.name}</div>
+                                <div class="text-[10px] text-slate-400">${n.name} • صافي اليوم: <span class="font-mono-num ${f.lastProfit>=0?'text-emerald-400':'text-rose-400'}">${f.lastProfit>=0?'+':''}$${f.lastProfit}</span></div>
+                            </div>
+                            <button onclick="focusNode(${n.id})" class="btn-tactical px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 text-[10px] font-bold">انتقال</button>
+                        </div>
+                    `;
+                });
+            }
+            body.innerHTML = html;
+        }
+        else if (Game.activeSidePanel === 'rivals') {
+            titleEl.textContent = '🤖 ترتيب المنافسين (البوتات)';
+            const ranked = [...Game.actors].sort((a, b) => b.netWorth - a.netWorth);
+            const maxNW = Math.max(1, ranked[0].netWorth);
+
+            body.innerHTML = ranked.map((a, idx) => {
+                const routesCount = Game.routes.filter(r => r.ownerId === a.id).length;
+                const facsCount = Game.facilities.filter(f => f.ownerId === a.id).length;
+                const pct = Math.max(8, Math.round((a.netWorth / maxNW) * 100));
+                return `
+                    <div class="bg-slate-900/85 border rounded-xl p-3 space-y-2" style="border-color: ${a.color}66">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full flex items-center justify-center font-mono-num font-bold text-xs text-slate-950" style="background:${a.color}">#${idx + 1}</span>
+                                <div>
+                                    <div class="text-xs font-extrabold text-white">${a.name}</div>
+                                    <div class="text-[10px]" style="color:${a.color}">${a.role}</div>
+                                </div>
+                            </div>
+                            <div class="text-left">
+                                <div class="font-mono-num font-bold text-sm text-white">$${a.netWorth.toLocaleString()}</div>
+                                <div class="text-[10px] font-mono-num ${a.dailyProfit>=0?'text-emerald-400':'text-rose-400'}">${a.dailyProfit>=0?'+':''}$${a.dailyProfit}/يوم</div>
+                            </div>
+                        </div>
+                        <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full rounded-full" style="width:${pct}%; background:${a.color}"></div>
+                        </div>
+                        <div class="flex justify-between text-[10px] text-slate-400">
+                            <span>🚛 ${routesCount} خط شحن</span>
+                            <span>🏭 ${facsCount} منشأة</span>
+                            <span>💵 نقد: <span class="font-mono-num">$${Math.round(a.cash).toLocaleString()}</span></span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        else if (Game.activeSidePanel === 'market') {
+            titleEl.textContent = '📊 فرص المراجحة والبورصة';
+            let html = `<div class="text-[11px] text-slate-400">أقوى الفجوات السعرية في الخريطة الآن (اضغط لفتح خريطة الأسعار):</div>`;
+
+            COMM_KEYS.forEach(c => {
+                const def = COMMODITIES[c];
+                let minN = Game.nodes[0], maxN = Game.nodes[0];
+                Game.nodes.forEach(n => {
+                    if (n.prices[c] < minN.prices[c]) minN = n;
+                    if (n.prices[c] > maxN.prices[c]) maxN = n;
+                });
+                const spread = maxN.prices[c] - minN.prices[c];
+                html += `
+                    <div onclick="setHeatmap('${c}')" class="cursor-pointer bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 hover:border-cyan-500/40 rounded-xl p-2.5 transition space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-xs text-white">${def.icon} ${def.name}</span>
+                            <span class="font-mono-num font-bold text-xs text-emerald-400">فارق +$${spread}</span>
+                        </div>
+                        <div class="flex items-center justify-between text-[10px] text-slate-300">
+                            <span>أرخص: <b class="text-emerald-300">${minN.name} ($${minN.prices[c]})</b></span>
+                            <span>أغلى: <b class="text-rose-300">${maxN.name} ($${maxN.prices[c]})</b></span>
+                        </div>
+                    </div>
+                `;
+            });
+            body.innerHTML = html;
+        }
+    }
+
+    function focusNode(nodeId) {
+        const n = Game.nodes[nodeId];
+        if (!n) return;
+        Camera.x = n.x;
+        Camera.y = n.y;
+        Camera.targetZoom = 1.05;
+        handleNodeTap(n);
+    }
+
+    function setHeatmap(commId) {
+        Game.heatmap = commId;
+        document.getElementById('heatmapSelect').value = commId;
+        SoundFX.click();
+    }
+
+    function closeHelpModal() {
+        document.getElementById('helpModal').classList.add('hidden');
+        SoundFX.init();
+        SoundFX.click();
+    }
+
+    // -------------------- 13. WIRE UP TOP & BOTTOM CONTROLS --------------------
+    document.querySelectorAll('.speed-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            Game.speed = Number(btn.dataset.speed);
+            SoundFX.click();
+            document.querySelectorAll('.speed-btn').forEach(b => {
+                b.className = 'speed-btn btn-tactical px-2.5 py-1 rounded-md text-xs font-bold text-slate-300 hover:text-white';
+            });
+            btn.className = 'speed-btn btn-tactical px-2.5 py-1 rounded-md text-xs font-bold bg-cyan-500/25 text-cyan-300 border border-cyan-400/40';
+        });
+    });
+
+    document.getElementById('heatmapSelect').addEventListener('change', e => {
+        Game.heatmap = e.target.value;
+        SoundFX.click();
+    });
+
+    document.getElementById('btnSound').addEventListener('click', e => {
+        SoundFX.enabled = !SoundFX.enabled;
+        e.currentTarget.textContent = SoundFX.enabled ? '🔊' : '🔇';
+    });
+
+    document.getElementById('btnHelp').addEventListener('click', () => {
+        document.getElementById('helpModal').classList.remove('hidden');
+    });
+
+    document.getElementById('btnCancelRouteMode').addEventListener('click', cancelRouteCreationMode);
+
+    document.getElementById('btnZoomIn').addEventListener('click', () => {
+        Camera.targetZoom = Math.min(Camera.maxZoom, Camera.targetZoom * 1.25);
+    });
+    document.getElementById('btnZoomOut').addEventListener('click', () => {
+        Camera.targetZoom = Math.max(Camera.minZoom, Camera.targetZoom * 0.8);
+    });
+    document.getElementById('btnResetCam').addEventListener('click', () => {
+        Camera.x = 0;
+        Camera.y = 0;
+        Camera.targetZoom = window.innerWidth < 640 ? 0.48 : 0.78;
+    });
+
+    // -------------------- 14. MAIN ANIMATION LOOP --------------------
+    function gameLoop(timestamp) {
+        if (!Game.lastFrameTime) Game.lastFrameTime = timestamp;
+        const dt = Math.min(0.1, (timestamp - Game.lastFrameTime) / 1000);
+        Game.lastFrameTime = timestamp;
+
+        updateSimulation(dt);
+        drawFrame();
+        requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    window.onload = function () {
+        resizeCanvas();
+        initWorld();
+        requestAnimationFrame(gameLoop);
+    };
+    </script>
+</body>
+</html>
